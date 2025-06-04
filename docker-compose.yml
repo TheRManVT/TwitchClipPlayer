@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  webhook_server:
+    build:
+      context: .
+    container_name: twitch_clips_downloader
+    ports:
+      - "5405:5405"
+    volumes:
+      - ./clips_downloader/downloaded_clips:/app/downloaded_clips
+      - ./clips_downloader/generated_index.html:/app/generated_index.html
+      - ./clips_downloader/main.sh:/app/main.sh
+      - ./clips_downloader/webhook_server.py:/app/webhook_server.py
+    restart: unless-stopped
+    networks:
+      - npm_npm
+    env_file:
+      - .env
+    command: ["python3", "/app/webhook_server.py"]
+
+  nginx:
+    image: nginx:alpine
+    container_name: twitch_clips_nginx
+    ports:
+      - "5404:5404"
+    volumes:
+      - ./clips_downloader/downloaded_clips:/app/downloaded_clips
+      - ./clips_downloader/generated_index.html:/app/generated_index.html
+      - ./nginx/nginx_default.conf:/etc/nginx/conf.d/default.conf
+    restart: unless-stopped
+    networks:
+      - npm_npm
+
+networks:
+  npm_npm:
+    external: true
