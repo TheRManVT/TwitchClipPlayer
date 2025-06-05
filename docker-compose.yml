@@ -24,6 +24,7 @@ services:
     volumes:
       - ./clips_downloader:/app
       - ./nginx/nginx_default.conf:/etc/nginx/conf.d/default.conf
+      # - ./nginx/404.html:/app/404.html # for custom 404 page
     restart: unless-stopped
     networks:
       - npm_npm
