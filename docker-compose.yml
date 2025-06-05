@@ -8,10 +8,7 @@ services:
     ports:
       - "5405:5405"
     volumes:
-      - ./clips_downloader/downloaded_clips:/app/downloaded_clips
-      - ./clips_downloader/generated_index.html:/app/generated_index.html
-      - ./clips_downloader/main.sh:/app/main.sh
-      - ./clips_downloader/webhook_server.py:/app/webhook_server.py
+      - ./clips_downloader:/app
     restart: unless-stopped
     networks:
       - npm_npm
@@ -25,8 +22,7 @@ services:
     ports:
       - "5404:5404"
     volumes:
-      - ./clips_downloader/downloaded_clips:/app/downloaded_clips
-      - ./clips_downloader/generated_index.html:/app/generated_index.html
+      - ./clips_downloader:/app
       - ./nginx/nginx_default.conf:/etc/nginx/conf.d/default.conf
     restart: unless-stopped
     networks:
