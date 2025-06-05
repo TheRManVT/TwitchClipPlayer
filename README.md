@@ -38,6 +38,7 @@ twitch_clips_downloader/
 ├── docker-compose.yml
 ├── Dockerfile
 ├── .env
+├── .dockerignore
 ├── nginx/
 │   └── nginx_default.conf
 ├── clips_downloader/
