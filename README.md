@@ -110,11 +110,53 @@ This will:
 
 ---
 
+## 🔁 Subscribing to `stream.offline` Events
+
+To trigger automatic clip downloads when a Twitch stream ends, you need to subscribe to the `stream.offline` event for your channel using Twitch’s EventSub API.
+
+### Step 1: Generate an App Access Token
+
+Run this command to get an access token:
+
+```bash
+curl -X POST "https://id.twitch.tv/oauth2/token" \
+-d "client_id=YOUR_TWITCH_CLIENT_ID" \
+-d "client_secret=YOUR_TWITCH_CLIENT_SECRET" \
+-d "grant_type=client_credentials"
+```
+
+The response will include an `access_token`. Copy it for use in the next step.
+
+---
+
+### Step 2: Subscribe to the `stream.offline` Event
+
+Now subscribe your webhook server to listen for the `stream.offline` event:
+
+```bash
+curl -X POST https://api.twitch.tv/helix/eventsub/subscriptions \
+-H "Client-ID: YOUR_TWITCH_CLIENT_ID" \
+-H "Authorization: Bearer YOUR_APP_ACCESS_TOKEN_FROM_STEP_1" \
+-H "Content-Type: application/json" \
+-d '{
+  "type": "stream.offline",
+  "version": "1",
+  "condition": {
+    "broadcaster_user_id": "YOUR_TWITCH_USER_ID"
+  },
+  "transport": {
+    "method": "webhook",
+    "callback": "https://your.public.domain/webhook",
+    "secret": "YOUR_TWITCH_EVENTSUB_SECRET"
+  }
+}'
+```
+
 ## 🔁 What Happens After a Stream Ends?
 
 Once the Twitch channel goes offline:
 
-1. Twitch sends an EventSub notification.
+1. Twitch sends an EventSub notification to the webhook.
 2. The webhook server triggers `main.sh`.
 3. It downloads the latest top clips (if new ones are available).
 4. Regenerates the HTML file (`generated_index.html`) with the new list of clips.
