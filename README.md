@@ -152,6 +152,8 @@ curl -X POST https://api.twitch.tv/helix/eventsub/subscriptions \
 }'
 ```
 
+---
+
 ## 🔁 What Happens After a Stream Ends?
 
 Once the Twitch channel goes offline:
