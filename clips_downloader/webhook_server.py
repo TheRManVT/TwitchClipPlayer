@@ -6,8 +6,8 @@ import subprocess
 
 app = Flask(__name__)
 
-TWITCH_SECRET = os.getenv('TWITCH_EVENTSUB_SECRET', 'supersecret')
-TARGET_USER_ID = os.getenv('TWITCH_USER_ID', 'replace_with_user_id')
+TWITCH_SECRET = os.getenv('TWITCH_EVENTSUB_SECRET')
+TARGET_USER_ID = os.getenv('TWITCH_USER_ID')
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
@@ -15,7 +15,7 @@ def webhook():
     payload = request.get_json()
 
     if msg_type == 'webhook_callback_verification':
-        return jsonify({'challenge': payload['challenge']})
+        return payload['challenge'], 200, {'Content-Type': 'text/plain'}
 
     if not verify_signature(request):
         return 'Invalid signature', 403
