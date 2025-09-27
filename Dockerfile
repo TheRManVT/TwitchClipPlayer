@@ -1,6 +1,6 @@
 FROM python:3.11-slim
 
-RUN apt update && apt install -y nginx ffmpeg curl && pip install twitch-dl flask
+RUN apt update && apt install -y nginx ffmpeg curl nano && pip install twitch-dl flask
 
 WORKDIR /app
 
