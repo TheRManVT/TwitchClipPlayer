@@ -7,9 +7,17 @@ HTML_FILE="/app/generated_index.html"
 
 mkdir -p "$DOWNLOAD_DIR"
 
+# Logic to download newest clips after one hour of the stream going offline
+  # if [[ "$1" == "delayed" ]]; then
+  # echo "Delaying 1 hour before downloading..." >> "$DOWNLOAD_DIR/main.log"
+  # sleep 3600
+# fi
+
+# Download top clips
 echo "Downloading top $MAX_CLIPS clips for $CHANNEL_NAME..."
 twitch-dl clips "$CHANNEL_NAME" --download --limit "$MAX_CLIPS" --target-dir "$DOWNLOAD_DIR" --period last_week
 
+# Generate randomized HTML
 echo "Generating HTML player..."
 cat <<EOF > "$HTML_FILE"
 <!DOCTYPE html>
@@ -17,7 +25,7 @@ cat <<EOF > "$HTML_FILE"
 <head>
 <meta charset="UTF-8" />
 <title>Random Twitch Clips</title>
-<meta http-equiv="refresh" content="1800">
+<meta http-equiv="refresh" content="1800"> <!-- Auto-refresh every 30 min -->
 <style>
   body, html { margin:0; padding:0; background:#000; }
   video { width: 100%; height: auto; }

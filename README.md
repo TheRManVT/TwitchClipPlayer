@@ -159,7 +159,7 @@ curl -X POST https://api.twitch.tv/helix/eventsub/subscriptions \
 Once the Twitch channel goes offline:
 
 1. Twitch sends an EventSub notification to the webhook.
-2. The webhook server triggers `main.sh`.
+2. The webhook server triggers `main.sh` (you can also uncomment the code snippet at line 10, if you want that it downloads everything after an hour of the stream ending).
 3. It downloads the latest top clips (if new ones are available).
 4. Regenerates the HTML file (`generated_index.html`) with the new list of clips.
 
