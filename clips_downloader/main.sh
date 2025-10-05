@@ -16,29 +16,6 @@ if [[ "$1" == "delayed" ]]; then
   sleep 3600
 fi
 
-
-#echo "
-#<html>
-#<head>
-#<title>Clips</title>
-#<meta charset="UTF-8">
-#</head>
-#<body>
-#<h1>Downloaded Clips</h1>
-#<ul>" > "$INDEX_FILE"
-#
-#for f in "$DOWNLOAD_DIR"/*.mp4; do
-#  size=$(du -h "$f" | cut -f1)
-#  datetime=$(date -r "$f" "+%Y-%m-%d %H:%M:%S")
-#  filename=$(basename "$f")
-#  echo "<li><a href=\"$filename\">$filename</a> - $size - $datetime</li>" >> "$INDEX_FILE"
-#done
-#
-#echo "</ul>
-#</body>
-#</html>" >> "$INDEX_FILE"
-
-
 # Download top clips
 echo "Downloading top $MAX_CLIPS clips for $CHANNEL_NAME..."
 twitch-dl clips "$CHANNEL_NAME" --download --limit "$MAX_CLIPS" --target-dir "$DOWNLOAD_DIR" --period last_week
@@ -218,13 +195,13 @@ if [ ! -f "$HTML_FILE" ]; then
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Romans Twitch Clips - Random Player</title>
-<link rel="icon" type="image/png" sizes="16x16" href="./favicon_io/favicon-16.png?v=$(date +%s)">
-<link rel="icon" type="image/png" sizes="32x32" href="./favicon_io/favicon-32.png?v=$(date +%s)">
-<link rel="icon" type="image/png" sizes="128x128" href="./favicon_io/favicon-128.png?v=$(date +%s)">
-<link rel="icon" type="image/png" sizes="48x48" href="./favicon_io/favicon-192.png?v=$(date +%s)">
-<link rel="icon" type="image/png" sizes="64x64" href="./favicon_io/favicon-512.png?v=$(date +%s)">
-<link rel="icon" type="image/x-icon" href="./favicon_io/favicon.ico?v=$(date +%s)">
+<title>Random Twitch Clips Player</title>
+# <link rel="icon" type="image/png" sizes="16x16" href="./favicon_io/favicon-16.png?v=$(date +%s)">
+# <link rel="icon" type="image/png" sizes="32x32" href="./favicon_io/favicon-32.png?v=$(date +%s)">
+# <link rel="icon" type="image/png" sizes="128x128" href="./favicon_io/favicon-128.png?v=$(date +%s)">
+# <link rel="icon" type="image/png" sizes="48x48" href="./favicon_io/favicon-192.png?v=$(date +%s)">
+# <link rel="icon" type="image/png" sizes="64x64" href="./favicon_io/favicon-512.png?v=$(date +%s)">
+# <link rel="icon" type="image/x-icon" href="./favicon_io/favicon.ico?v=$(date +%s)">
 
 <meta http-equiv="refresh" content="1800"> <!-- Auto-refresh every 30 min -->
 <style>
