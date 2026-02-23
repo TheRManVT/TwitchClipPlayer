@@ -196,13 +196,13 @@ if [ ! -f "$HTML_FILE" ]; then
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Romans Twitch Clips - Random Player</title>
-<link rel="icon" type="image/png" sizes="16x16" href="./favicon_io/favicon-16.png?v=$(date +%s)">
-<link rel="icon" type="image/png" sizes="32x32" href="./favicon_io/favicon-32.png?v=$(date +%s)">
-<link rel="icon" type="image/png" sizes="128x128" href="./favicon_io/favicon-128.png?v=$(date +%s)">
-<link rel="icon" type="image/png" sizes="48x48" href="./favicon_io/favicon-192.png?v=$(date +%s)">
-<link rel="icon" type="image/png" sizes="64x64" href="./favicon_io/favicon-512.png?v=$(date +%s)">
-<link rel="icon" type="image/x-icon" href="./favicon_io/favicon.ico?v=$(date +%s)">
+<title>Random Twitch Clips Player</title>
+#<link rel="icon" type="image/png" sizes="16x16" href="./favicon_io/favicon-16.png?v=$(date +%s)">
+#<link rel="icon" type="image/png" sizes="32x32" href="./favicon_io/favicon-32.png?v=$(date +%s)">
+#<link rel="icon" type="image/png" sizes="128x128" href="./favicon_io/favicon-128.png?v=$(date +%s)">
+#<link rel="icon" type="image/png" sizes="48x48" href="./favicon_io/favicon-192.png?v=$(date +%s)">
+#<link rel="icon" type="image/png" sizes="64x64" href="./favicon_io/favicon-512.png?v=$(date +%s)">
+#<link rel="icon" type="image/x-icon" href="./favicon_io/favicon.ico?v=$(date +%s)">
 
 <meta http-equiv="refresh" content="1800"> <!-- Auto-refresh every 30 min -->
 <style>
