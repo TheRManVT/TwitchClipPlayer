@@ -6,7 +6,6 @@ WORKDIR /app
 
 COPY clips_downloader/main.sh .
 COPY clips_downloader/obs_clips_template.html .
-COPY clips_downloader/generated_index.html .
 COPY clips_downloader/webhook_server.py .
 
 RUN chmod +x /app/main.sh

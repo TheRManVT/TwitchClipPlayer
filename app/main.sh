@@ -3,10 +3,10 @@ export LANG=C.UTF-8
 
 CHANNEL_NAME="${CHANNEL_NAME:-your_twitch_channel_here}"
 MAX_CLIPS="${MAX_CLIPS:-10}"
-DOWNLOAD_DIR="/app/downloaded_clips"
-HTML_FILE="/app/generated_index.html"
-JSON_FILE="/app/clips.json"
-INDEX_FILE="/app/downloaded_clips/downloaded_clips_index.html"
+DOWNLOAD_DIR="/public/downloaded_clips"
+JSON_FILE="/public/clips.json"
+HTML_FILE="/public/generated_index.html"
+INDEX_FILE="/public/downloaded_clips/downloaded_clips_index.html"
 
 
 mkdir -p "$DOWNLOAD_DIR"
@@ -72,9 +72,7 @@ cat <<EOF > "$INDEX_FILE"
     display: flex;
     align-items: center;
   }
-  li:hover {
-    background: #27272b;
-  }
+  li:hover { background: #27272b; }
   a {
     color: #00b0ff;
     text-decoration: none;
@@ -140,20 +138,23 @@ async function loadClips() {
 
       // Hover video preview
       li.addEventListener("mouseenter", e => {
-        preview.src = clip.url;
-        preview.style.display = "block";
-        preview.style.top = (e.pageY + 10) + "px";
-        preview.style.left = (e.pageX + 10) + "px";
-        preview.play();
+      preview.src = clip.url;
+      preview.style.display = "block";
+      preview.play();
       });
+
       li.addEventListener("mousemove", e => {
-        preview.style.top = (e.pageY + 10) + "px";
-        preview.style.left = (e.pageX + 10) + "px";
+      // Use clientX/clientY instead of pageY/pageX — unaffected by scroll
+      const offsetX = 20;
+      const offsetY = 20;
+      preview.style.top = (e.clientY + offsetY) + "px";
+      preview.style.left = (e.clientX + offsetX) + "px";
       });
+
       li.addEventListener("mouseleave", () => {
-        preview.pause();
-        preview.src = "";
-        preview.style.display = "none";
+      preview.pause();
+      preview.src = "";
+      preview.style.display = "none";
       });
 
       list.appendChild(li);
@@ -195,13 +196,13 @@ if [ ! -f "$HTML_FILE" ]; then
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Random Twitch Clips Player</title>
-# <link rel="icon" type="image/png" sizes="16x16" href="./favicon_io/favicon-16.png?v=$(date +%s)">
-# <link rel="icon" type="image/png" sizes="32x32" href="./favicon_io/favicon-32.png?v=$(date +%s)">
-# <link rel="icon" type="image/png" sizes="128x128" href="./favicon_io/favicon-128.png?v=$(date +%s)">
-# <link rel="icon" type="image/png" sizes="48x48" href="./favicon_io/favicon-192.png?v=$(date +%s)">
-# <link rel="icon" type="image/png" sizes="64x64" href="./favicon_io/favicon-512.png?v=$(date +%s)">
-# <link rel="icon" type="image/x-icon" href="./favicon_io/favicon.ico?v=$(date +%s)">
+<title>Romans Twitch Clips - Random Player</title>
+<link rel="icon" type="image/png" sizes="16x16" href="./favicon_io/favicon-16.png?v=$(date +%s)">
+<link rel="icon" type="image/png" sizes="32x32" href="./favicon_io/favicon-32.png?v=$(date +%s)">
+<link rel="icon" type="image/png" sizes="128x128" href="./favicon_io/favicon-128.png?v=$(date +%s)">
+<link rel="icon" type="image/png" sizes="48x48" href="./favicon_io/favicon-192.png?v=$(date +%s)">
+<link rel="icon" type="image/png" sizes="64x64" href="./favicon_io/favicon-512.png?v=$(date +%s)">
+<link rel="icon" type="image/x-icon" href="./favicon_io/favicon.ico?v=$(date +%s)">
 
 <meta http-equiv="refresh" content="1800"> <!-- Auto-refresh every 30 min -->
 <style>
@@ -219,9 +220,37 @@ if [ ! -f "$HTML_FILE" ]; then
       const clips = await response.json();
       const player = document.getElementById('clipPlayer');
 
+      // Buffer configuration - clips can repeat after this many clips have been played
+      const BUFFER_SIZE = 5;
+      const recentlyPlayed = [];
+
       function playRandomClip() {
         if (clips.length === 0) return;
-        const randomIndex = Math.floor(Math.random() * clips.length);
+
+        let availableClips = clips;
+
+        // If we have enough clips and our buffer is full, exclude recently played clips
+        if (clips.length > BUFFER_SIZE && recentlyPlayed.length >= BUFFER_SIZE) {
+          availableClips = clips.filter(clip => !recentlyPlayed.includes(clip));
+        }
+
+        // If filtering left us with no clips, reset and use all clips
+        if (availableClips.length === 0) {
+          availableClips = clips;
+        }
+
+        // Select random clip from available pool
+        const randomIndex = Math.floor(Math.random() * availableClips.length);
+        const selectedClip = availableClips[randomIndex];
+
+        // Add to recently played buffer
+        recentlyPlayed.push(selectedClip);
+
+        // Keep buffer at max size
+        if (recentlyPlayed.length > BUFFER_SIZE) {
+          recentlyPlayed.shift(); // Remove oldest
+        }
+
         player.src = clips[randomIndex];
         player.play();
       }

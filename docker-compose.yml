@@ -1,17 +1,14 @@
-version: '3.8'
-
 services:
   webhook_server:
     build:
       context: .
     container_name: twitch_clips_downloader
     ports:
-      - "5405:5405"
+      - "5405:5405"  # No longer conflicting with nginx
     volumes:
-      - ./clips_downloader:/app
+         - ./app:/app
+         - ./public/downloaded_clips:/public/downloaded_clips
     restart: unless-stopped
-    networks:
-      - npm_npm
     env_file:
       - .env
     command: ["python3", "/app/webhook_server.py"]
@@ -20,15 +17,9 @@ services:
     image: nginx:alpine
     container_name: twitch_clips_nginx
     ports:
-      - "5404:5404"
+      - "5404:5404"  # Nginx will serve the HTML/MP4s on this port
     volumes:
-      - ./clips_downloader:/app
-      - ./nginx/nginx_default.conf:/etc/nginx/conf.d/default.conf
-      # - ./nginx/404.html:/app/404.html # for custom 404 page
+        - ./public:/usr/share/nginx/html
+        - ./nginx/nginx_default.conf:/etc/nginx/conf.d/default.conf
+        - ./nginx/404.html:/usr/share/nginx/html/404.html  # ← fixed
     restart: unless-stopped
-    networks:
-      - npm_npm
-
-networks:
-  npm_npm:
-    external: true
