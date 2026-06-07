@@ -8,20 +8,109 @@ JSON_FILE="/public/clips.json"
 HTML_FILE="/public/generated_index.html"
 INDEX_FILE="/public/downloaded_clips/downloaded_clips_index.html"
 
-
 mkdir -p "$DOWNLOAD_DIR"
 
+LOG_FILE="$DOWNLOAD_DIR/main.log"
+
+exec > >(while IFS= read -r line; do
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $line"
+done | tee -a "$LOG_FILE") 2>&1
+
+log() {
+    echo "$*"
+}
+
+log "===== Script started ====="
+
 if [[ "$1" == "delayed" ]]; then
-  echo "Delaying 1 hour before downloading..." >> "$DOWNLOAD_DIR/main.log"
+  log "Delaying 1 hour before downloading..."
   sleep 3600
 fi
 
-# Download top clips
-echo "Downloading top $MAX_CLIPS clips for $CHANNEL_NAME..."
-twitch-dl clips "$CHANNEL_NAME" --download --limit "$MAX_CLIPS" --target-dir "$DOWNLOAD_DIR" --period last_week
+# Download top clips (try twitch-dl first, fall back to Helix API + yt-dlp)
+log "Downloading top $MAX_CLIPS clips for $CHANNEL_NAME..."
+
+TWITCH_DL_FAILED=false
+
+TWITCH_OUTPUT=$(twitch-dl clips "$CHANNEL_NAME" \
+  --download \
+  --limit "$MAX_CLIPS" \
+  --target-dir "$DOWNLOAD_DIR" \
+  --period last_week 2>&1)
+
+echo "$TWITCH_OUTPUT"
+
+if echo "$TWITCH_OUTPUT" | grep -q "GraphQL query failed"; then
+    TWITCH_DL_FAILED=true
+fi
+
+if [ "$TWITCH_DL_FAILED" = true ]; then
+  log "twitch-dl failed, falling back to Helix API..."
+
+  TOKEN_RESPONSE=$(curl -s -X POST "https://id.twitch.tv/oauth2/token" \
+    -d "client_id=$TWITCH_CLIENT_ID" \
+    -d "client_secret=$TWITCH_CLIENT_SECRET" \
+    -d "grant_type=client_credentials")
+
+  ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token')
+
+  if [[ -z "$ACCESS_TOKEN" || "$ACCESS_TOKEN" == "null" ]]; then
+    log "Failed to get access token: $TOKEN_RESPONSE"
+    exit 1
+  fi
+
+  STARTED_AT=$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)
+  ENDED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  
+  CLIPS_RESPONSE=$(curl -s \
+  -H "Client-ID: $TWITCH_CLIENT_ID" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  "https://api.twitch.tv/helix/clips?broadcaster_id=$TWITCH_USER_ID&first=$MAX_CLIPS&started_at=$STARTED_AT&ended_at=$ENDED_AT")
+
+  log "Helix response: $CLIPS_RESPONSE"
+
+  echo "$CLIPS_RESPONSE" | jq -c '.data[]' | while read -r clip; do
+    url=$(echo "$clip" | jq -r '.url')
+    clip_id=$(echo "$clip" | jq -r '.id')
+    created_at=$(echo "$clip" | jq -r '.created_at')
+    title=$(echo "$clip" | jq -r '.title')
+
+    # Format date prefix: YYYYMMDD
+    date_prefix=$(date -u -d "$created_at" +%Y%m%d 2>/dev/null || echo "${created_at:0:10}" | tr -d '-')
+
+    # Sanitize title
+    safe_title=$(echo "$title" | tr ' ' '_' | tr -cd '[:alnum:]_.-')
+
+    base_name="${date_prefix}_${clip_id}_${safe_title}"
+    out_path="$DOWNLOAD_DIR/${base_name}.mp4"
+
+    # Handle collisions
+    if [ -f "$out_path" ]; then
+      counter=1
+      while [ -f "$DOWNLOAD_DIR/${base_name}(${counter}).mp4" ]; do
+        counter=$((counter + 1))
+      done
+      out_path="$DOWNLOAD_DIR/${base_name}(${counter}).mp4"
+    fi
+
+    # Download to a unique temp file, then rename
+    tmp_file="$DOWNLOAD_DIR/.tmp_${clip_id}_$$"
+    yt-dlp --no-part -o "${tmp_file}.%(ext)s" "$url"
+
+    # Find what yt-dlp actually wrote (extension may vary)
+    downloaded=$(ls "${tmp_file}".* 2>/dev/null | head -n1)
+    if [ -n "$downloaded" ]; then
+      mv "$downloaded" "$out_path"
+      log "Saved: $(basename "$out_path")"
+    else
+      log "WARNING: yt-dlp produced no output for clip $clip_id"
+    fi
+  done
+fi
+
 
 # Generate JSON list of clips
-echo "Generating clips.json..."
+log "Generating clips.json..."
 echo "[" > "$JSON_FILE"
 first=true
 for clip in "$DOWNLOAD_DIR"/*.mp4; do
@@ -36,8 +125,10 @@ done
 echo "]" >> "$JSON_FILE"
 
 # Generate dynamic HTML index of all clips based on JSON
-echo "Regenerating downloaded_clips_index.html..."
-cat <<EOF > "$INDEX_FILE"
+# NOTE: <<'EOF' (quoted) prevents bash from expanding ${ } and backticks inside,
+# which is required because the JS uses template literals with ${clip.url} etc.
+log "Regenerating downloaded_clips_index.html..."
+cat <<'EOF' > "$INDEX_FILE"
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -189,8 +280,10 @@ EOF
 
 
 # Only generate HTML if it doesn't already exist
+# NOTE: <<EOF (unquoted) is intentional here — $(date +%s) must be expanded
+# so the favicon URLs get a fresh cache-busting timestamp at generation time.
 if [ ! -f "$HTML_FILE" ]; then
-  echo "Generating HTML player..."
+  log "Generating HTML player..."
   cat <<EOF > "$HTML_FILE"
 <!DOCTYPE html>
 <html lang="en">
@@ -268,3 +361,4 @@ if [ ! -f "$HTML_FILE" ]; then
 </html>
 EOF
 fi
+log "===== Script finished ====="
