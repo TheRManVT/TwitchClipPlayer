@@ -32,6 +32,7 @@ log "Downloading top $MAX_CLIPS clips for $CHANNEL_NAME..."
 
 TWITCH_DL_FAILED=false
 
+#twitch-dl clips "$CHANNEL_NAME" --download --limit "$MAX_CLIPS" --target-dir "$DOWNLOAD_DIR" --period last_week 2>&1 | grep -q "GraphQL query failed" && TWITCH_DL_FAILED=true
 TWITCH_OUTPUT=$(twitch-dl clips "$CHANNEL_NAME" \
   --download \
   --limit "$MAX_CLIPS" \
@@ -62,6 +63,8 @@ if [ "$TWITCH_DL_FAILED" = true ]; then
   STARTED_AT=$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)
   ENDED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   
+  yt_dlp_updated=false
+  
   CLIPS_RESPONSE=$(curl -s \
   -H "Client-ID: $TWITCH_CLIENT_ID" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
@@ -72,16 +75,18 @@ if [ "$TWITCH_DL_FAILED" = true ]; then
   echo "$CLIPS_RESPONSE" | jq -c '.data[]' | while read -r clip; do
     url=$(echo "$clip" | jq -r '.url')
     clip_id=$(echo "$clip" | jq -r '.id')
+    video_id=$(echo "$clip" | jq -r '.video_id')
     created_at=$(echo "$clip" | jq -r '.created_at')
     title=$(echo "$clip" | jq -r '.title')
+    broadcaster_login=$(echo "$clip" | jq -r '.broadcaster_name' | tr '[:upper:]' '[:lower:]')
 
     # Format date prefix: YYYYMMDD
     date_prefix=$(date -u -d "$created_at" +%Y%m%d 2>/dev/null || echo "${created_at:0:10}" | tr -d '-')
 
-    # Sanitize title
-    safe_title=$(echo "$title" | tr ' ' '_' | tr -cd '[:alnum:]_.-')
+    # Slugify title (lowercase, spaces -> hyphens, strip non-alphanumerics)
+    safe_title=$(echo "$title" | tr '[:upper:]' '[:lower:]' | tr -s ' ' '-' | tr -cd '[:alnum:]-')
 
-    base_name="${date_prefix}_${clip_id}_${safe_title}"
+    base_name="${date_prefix}_${video_id}_${broadcaster_login}_${safe_title}"
     out_path="$DOWNLOAD_DIR/${base_name}.mp4"
 
     # Handle collisions
@@ -93,11 +98,23 @@ if [ "$TWITCH_DL_FAILED" = true ]; then
       out_path="$DOWNLOAD_DIR/${base_name}(${counter}).mp4"
     fi
 
-    # Download to a unique temp file, then rename
+    # Use clip_id (slug) for temp file uniqueness, since video_id can repeat
     tmp_file="$DOWNLOAD_DIR/.tmp_${clip_id}_$$"
-    yt-dlp --no-part -o "${tmp_file}.%(ext)s" "$url"
 
-    # Find what yt-dlp actually wrote (extension may vary)
+    output=$(yt-dlp --no-part -o "${tmp_file}.%(ext)s" "$url" 2>&1)
+    status=$?
+
+    if ! $yt_dlp_updated && grep -q "older than 90 days" <<< "$output"; then
+        log "Updating yt-dlp..."
+        pip install --upgrade yt-dlp
+        yt_dlp_updated=true
+    fi
+
+    if [ $status -ne 0 ]; then
+        log "Failed to download clip $clip_id"
+        continue
+    fi
+
     downloaded=$(ls "${tmp_file}".* 2>/dev/null | head -n1)
     if [ -n "$downloaded" ]; then
       mv "$downloaded" "$out_path"
