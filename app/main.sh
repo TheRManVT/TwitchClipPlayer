@@ -32,7 +32,6 @@ log "Downloading top $MAX_CLIPS clips for $CHANNEL_NAME..."
 
 TWITCH_DL_FAILED=false
 
-#twitch-dl clips "$CHANNEL_NAME" --download --limit "$MAX_CLIPS" --target-dir "$DOWNLOAD_DIR" --period last_week 2>&1 | grep -q "GraphQL query failed" && TWITCH_DL_FAILED=true
 TWITCH_OUTPUT=$(twitch-dl clips "$CHANNEL_NAME" \
   --download \
   --limit "$MAX_CLIPS" \
@@ -62,9 +61,9 @@ if [ "$TWITCH_DL_FAILED" = true ]; then
 
   STARTED_AT=$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)
   ENDED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  
+
   yt_dlp_updated=false
-  
+
   CLIPS_RESPONSE=$(curl -s \
   -H "Client-ID: $TWITCH_CLIENT_ID" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
@@ -80,22 +79,20 @@ if [ "$TWITCH_DL_FAILED" = true ]; then
     title=$(echo "$clip" | jq -r '.title')
     broadcaster_login=$(echo "$clip" | jq -r '.broadcaster_name' | tr '[:upper:]' '[:lower:]')
 
-    # Format date prefix: YYYYMMDD
+    # Format date prefix: YYYYMMDD (matches twitch-dl)
     date_prefix=$(date -u -d "$created_at" +%Y%m%d 2>/dev/null || echo "${created_at:0:10}" | tr -d '-')
 
     # Slugify title (lowercase, spaces -> hyphens, strip non-alphanumerics)
     safe_title=$(echo "$title" | tr '[:upper:]' '[:lower:]' | tr -s ' ' '-' | tr -cd '[:alnum:]-')
 
+    # Filename matches twitch-dl: {YYYYMMDD}_{video_id}_{broadcaster_login}_{slugified_title}.mp4
     base_name="${date_prefix}_${video_id}_${broadcaster_login}_${safe_title}"
     out_path="$DOWNLOAD_DIR/${base_name}.mp4"
 
-    # Handle collisions
+    # Mirror twitch-dl duplicate check: if the target file already exists, skip
     if [ -f "$out_path" ]; then
-      counter=1
-      while [ -f "$DOWNLOAD_DIR/${base_name}(${counter}).mp4" ]; do
-        counter=$((counter + 1))
-      done
-      out_path="$DOWNLOAD_DIR/${base_name}(${counter}).mp4"
+      log "Clip exists: $out_path"
+      continue
     fi
 
     # Use clip_id (slug) for temp file uniqueness, since video_id can repeat
